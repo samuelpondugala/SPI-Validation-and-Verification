@@ -1,4 +1,4 @@
-# CardLink: SPI FAT32 Reliability Harness
+# CardLink: SPI SD Card Validation Suite
 
 CardLink is a Python-based SD card validation and FAT32 exploration project built for Raspberry Pi SPI environments. It combines low-level SPI command handling, lightweight FAT32 navigation helpers, a pytest-driven validation suite, and a few standalone hardware scripts for fault injection, loopback checks, and SPI display playback.
 
