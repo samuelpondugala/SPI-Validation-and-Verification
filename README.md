@@ -9,14 +9,6 @@ This repository is useful if you want to:
 - run hardware-aware regression and fault-injection tests
 - demonstrate embedded validation work on a resume or GitHub profile
 
-## Resume-Friendly Project Name
-
-Recommended project title:
-
-`CardLink: SPI FAT32 Reliability Harness`
-
-It stays explicit about the domain while still sounding polished enough for a resume, portfolio, or GitHub project heading.
-
 ## What The Project Covers
 
 The codebase is centered around three layers:
