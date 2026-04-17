@@ -7,7 +7,6 @@ This repository is useful if you want to:
 - validate SD card behavior over SPI
 - exercise FAT32 read/write paths from Python
 - run hardware-aware regression and fault-injection tests
-- demonstrate embedded validation work on a resume or GitHub profile
 
 ## What The Project Covers
 
