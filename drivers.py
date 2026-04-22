@@ -4,7 +4,18 @@ import time
 spi = spidev.SpiDev()
 
 # ---------------- SEND COMMAND ----------------
-def send_cmd(cmd, arg, crc):
+def send_cmd(cmd, arg, crc):    
+    """Send a raw SD card command packet over SPI and return the card response.
+
+    Args:
+        cmd (int): SD command index without the start bit prefix.
+        arg (int): 32-bit command argument sent with the command.
+        crc (int): CRC byte required by some SD commands during setup.
+
+    Returns:
+        int: First non-`0xFF` response byte from the card, or `-1` on timeout.
+    """
+    
     packet = [
         0x40 | cmd,
         (arg >> 24) & 0xFF,
@@ -26,6 +37,16 @@ def send_cmd(cmd, arg, crc):
 
 # ---------------- INIT SD ----------------
 def init_sd():
+    """Initialize the SD card in SPI mode and wait until it becomes ready.
+
+    Returns:
+        bool: `True` when the card finishes initialization successfully.
+
+    Raises:
+        OSError: If the card does not respond to `CMD0` or never completes
+            the `ACMD41` power-up sequence.
+    """
+
     spi.max_speed_hz = 400000
     spi.xfer([0xFF] * 10)
 
@@ -53,6 +74,13 @@ def init_sd():
 
 # ---------------- READ OCR ----------------
 def read_ocr():
+    """Read the OCR register and detect whether the card uses SDHC addressing.
+
+    Returns:
+        bool: `True` when the OCR register indicates an SDHC/SDXC card,
+        otherwise `False`.
+    """
+
     r = send_cmd(58, 0, 0)
     ocr = spi.xfer([0xFF]*4)
 
@@ -63,6 +91,18 @@ def read_ocr():
 
 # ---------------- READ BLOCK ----------------
 def read_block(block, is_sdhc):
+    """Read one 512-byte sector from the SD card.
+
+    Args:
+        block (int): Logical block number to read.
+        is_sdhc (bool): Whether the card uses block addressing (`True`) or
+            byte addressing (`False`).
+
+    Returns:
+        list[int] | None: A 512-byte sector as a list of integers in the
+        range `0-255`, or `None` if the read command fails.
+    """
+
     addr = block if is_sdhc else block * 512
 
     spi.xfer([0xFF])
@@ -82,6 +122,18 @@ def read_block(block, is_sdhc):
 
 # ---------------- FAT ENTRY ----------------
 def read_fat_entry(cluster, fat_start, is_sdhc):
+    """Read the FAT32 entry for a cluster and return the next cluster value.
+
+    Args:
+        cluster (int): Cluster number whose FAT entry should be read.
+        fat_start (int): First sector of the FAT region.
+        is_sdhc (bool): Whether the card uses block addressing.
+
+    Returns:
+        int: FAT32 entry value masked to 28 bits. This is usually the next
+        cluster in the chain or an end-of-chain marker.
+    """
+
     fat_offset = cluster * 4
     fat_sector = fat_start + (fat_offset // 512)
     offset = fat_offset % 512
@@ -92,11 +144,36 @@ def read_fat_entry(cluster, fat_start, is_sdhc):
 
 # ---------------- CLUSTER → SECTOR ----------------
 def cluster_to_sector(cluster, data_start, spc):
+    """Translate a FAT32 cluster number into the first sector of that cluster.
+
+    Args:
+        cluster (int): FAT32 cluster number.
+        data_start (int): First sector of the data region.
+        spc (int): Sectors per cluster.
+
+    Returns:
+        int: First sector index belonging to the given cluster.
+    """
+
     return data_start + (cluster - 2) * spc
 
 
 # ---------------- READ DIRECTORY ----------------
 def read_directory(start_cluster, data_start, spc, fat_start, is_sdhc):
+    """Read all sectors that belong to a directory cluster chain.
+
+    Args:
+        start_cluster (int): First cluster of the directory to read.
+        data_start (int): First sector of the FAT32 data region.
+        spc (int): Number of sectors stored in each cluster.
+        fat_start (int): First sector of the FAT table.
+        is_sdhc (bool): Whether the card uses block addressing.
+
+    Returns:
+        list[int]: Flattened directory bytes collected from every cluster in
+        the directory chain.
+    """
+
     cluster = start_cluster
     data_all = []
     visited = set()
@@ -120,6 +197,17 @@ def read_directory(start_cluster, data_start, spc, fat_start, is_sdhc):
 
 # ---------------- LIST FILES ----------------
 def list_files(data):
+    """Parse raw directory bytes, print entries, and return discovered files.
+
+    Args:
+        data (list[int]): Raw directory content where each 32-byte chunk is a
+            FAT directory entry.
+
+    Returns:
+        list[tuple[str, str, int, int]]: File records as
+        `(name, ext, cluster, size)` for non-directory entries.
+    """
+
     print("\n--- FILES ---")
 
     files = []
@@ -154,6 +242,20 @@ def list_files(data):
 
 # ---------------- READ FILE ----------------
 def read_file(start_cluster, data_start, spc, fat_start, is_sdhc, size):
+    """Read file content by following its FAT cluster chain.
+
+    Args:
+        start_cluster (int): First cluster of the file.
+        data_start (int): First sector of the FAT32 data region.
+        spc (int): Number of sectors per cluster.
+        fat_start (int): First sector of the FAT table.
+        is_sdhc (bool): Whether the card uses block addressing.
+        size (int): Exact file size in bytes.
+
+    Returns:
+        list[int]: File data trimmed to `size` bytes.
+    """
+
     cluster = start_cluster
     data_all = []
     visited = set()
@@ -177,6 +279,19 @@ def read_file(start_cluster, data_start, spc, fat_start, is_sdhc, size):
 
 # ---------------- CLI EXPLORER ----------------
 def cli_explorer(root_cluster, data_start, spc, fat_start, is_sdhc):
+    """Run an interactive shell for browsing and modifying the FAT32 volume.
+
+    Args:
+        root_cluster (int): Cluster number of the root directory.
+        data_start (int): First sector of the FAT32 data region.
+        spc (int): Number of sectors per cluster.
+        fat_start (int): First sector of the FAT table.
+        is_sdhc (bool): Whether the card uses block addressing.
+
+    Returns:
+        None: This function loops on user input until `EXIT` is entered.
+    """
+
     current_cluster = root_cluster
     path_stack = [(root_cluster, "/")]  # start with root
 
@@ -353,6 +468,18 @@ def cli_explorer(root_cluster, data_start, spc, fat_start, is_sdhc):
             print("Commands: ls, cd <dir>, cd .., cat <file>, pwd, exit")
 
 def write_block(block, data, is_sdhc):
+    """Write one 512-byte sector to the SD card.
+
+    Args:
+        block (int): Logical block number to write.
+        data (list[int]): Byte values to write. Short buffers are padded to
+            512 bytes before transmission.
+        is_sdhc (bool): Whether the card uses block addressing.
+
+    Returns:
+        bool: `True` when the write succeeds, otherwise `False`.
+    """
+
     addr = block if is_sdhc else block * 512
 
     spi.xfer([0xFF])
@@ -388,6 +515,17 @@ def write_block(block, data, is_sdhc):
     return True
 
 def find_free_cluster(fat_start, is_sdhc):
+    """Search the FAT for the first unused cluster in the scanned range.
+
+    Args:
+        fat_start (int): First sector of the FAT table.
+        is_sdhc (bool): Whether the card uses block addressing.
+
+    Returns:
+        int | None: First free cluster number, or `None` when no free entry is
+        found in the searched range.
+    """
+
     for cluster in range(2, 10000):
         val = read_fat_entry(cluster, fat_start, is_sdhc)
         if val == 0:
@@ -395,6 +533,19 @@ def find_free_cluster(fat_start, is_sdhc):
     return None
 
 def write_fat_entry(cluster, value, fat_start, is_sdhc):
+    """Update one FAT32 entry with a new cluster-chain value.
+
+    Args:
+        cluster (int): Cluster number whose FAT entry should be updated.
+        value (int): New FAT value, such as `0`, a next-cluster pointer, or an
+            end-of-chain marker.
+        fat_start (int): First sector of the FAT table.
+        is_sdhc (bool): Whether the card uses block addressing.
+
+    Returns:
+        None: The FAT sector is modified in place and written back.
+    """
+
     fat_offset = cluster * 4
     fat_sector = fat_start + (fat_offset // 512)
     offset = fat_offset % 512
@@ -412,6 +563,20 @@ def write_fat_entry(cluster, value, fat_start, is_sdhc):
     
 
 def create_dir_entry(name, ext, cluster, size):
+    """Build a 32-byte FAT directory entry for a file or directory.
+
+    Args:
+        name (str): Base filename in 8.3 format, without the extension.
+        ext (str): Three-character extension, or an empty string for
+            directories.
+        cluster (int): Starting cluster assigned to the entry.
+        size (int): File size in bytes. For directories this is typically `0`.
+
+    Returns:
+        list[int]: A 32-byte FAT directory entry encoded as integer byte
+        values.
+    """
+
     entry = [0] * 32
 
     name = name.ljust(8)[:8]
@@ -430,6 +595,21 @@ def create_dir_entry(name, ext, cluster, size):
     return entry
 
 def create_file(filename, content, current_cluster, data_start, spc, fat_start, is_sdhc):
+    """Create a new file, store its content, and add an entry to the directory.
+
+    Args:
+        filename (str): Target file name in `NAME.EXT` format.
+        content (str): Text content written into the new file using UTF-8.
+        current_cluster (int): Cluster number of the parent directory.
+        data_start (int): First sector of the FAT32 data region.
+        spc (int): Number of sectors per cluster.
+        fat_start (int): First sector of the FAT table.
+        is_sdhc (bool): Whether the card uses block addressing.
+
+    Returns:
+        None: Status is reported through prints and on-disk updates.
+    """
+
     try:
         name, ext = filename.upper().split('.')
     except:
@@ -471,6 +651,23 @@ def create_file(filename, content, current_cluster, data_start, spc, fat_start, 
     print("No space in directory")
 
 def find_file(filename, current_cluster, data_start, spc, fat_start, is_sdhc):
+    """Find a file or directory entry inside the current directory.
+
+    Args:
+        filename (str): Name to search for. A missing extension is treated as a
+            directory-style lookup.
+        current_cluster (int): Cluster number of the directory being searched.
+        data_start (int): First sector of the FAT32 data region.
+        spc (int): Number of sectors per cluster.
+        fat_start (int): First sector of the FAT table.
+        is_sdhc (bool): Whether the card uses block addressing.
+
+    Returns:
+        tuple[int | None, list[int] | None, list[int]]: A tuple containing the
+        entry offset, the matched 32-byte entry, and the full directory data.
+        If no match is found, the first two elements are `None`.
+    """
+
     data = read_directory(current_cluster, data_start, spc, fat_start, is_sdhc)
 
     filename = filename.upper()
@@ -505,6 +702,20 @@ def find_file(filename, current_cluster, data_start, spc, fat_start, is_sdhc):
 
 
 def delete_file(filename, current_cluster, data_start, spc, fat_start, is_sdhc):
+    """Delete a file entry and free its starting cluster in the FAT.
+
+    Args:
+        filename (str): Name of the file to remove.
+        current_cluster (int): Cluster number of the parent directory.
+        data_start (int): First sector of the FAT32 data region.
+        spc (int): Number of sectors per cluster.
+        fat_start (int): First sector of the FAT table.
+        is_sdhc (bool): Whether the card uses block addressing.
+
+    Returns:
+        None: Status is reported through prints and on-disk updates.
+    """
+
     idx, entry, dir_data = find_file(filename, current_cluster, data_start, spc, fat_start, is_sdhc)
 
     if not entry:
@@ -530,6 +741,20 @@ def delete_file(filename, current_cluster, data_start, spc, fat_start, is_sdhc):
     print("File deleted:", filename)
 
 def create_directory(dirname, current_cluster, data_start, spc, fat_start, is_sdhc):
+    """Create a new subdirectory and register it in the parent directory.
+
+    Args:
+        dirname (str): Directory name stored in FAT 8.3 format.
+        current_cluster (int): Cluster number of the parent directory.
+        data_start (int): First sector of the FAT32 data region.
+        spc (int): Number of sectors per cluster.
+        fat_start (int): First sector of the FAT table.
+        is_sdhc (bool): Whether the card uses block addressing.
+
+    Returns:
+        None: Status is reported through prints and on-disk updates.
+    """
+
     dirname = dirname.upper()
 
     free_cluster = find_free_cluster(fat_start, is_sdhc)
@@ -574,6 +799,20 @@ def create_directory(dirname, current_cluster, data_start, spc, fat_start, is_sd
             return
 
 def delete_directory(dirname, current_cluster, data_start, spc, fat_start, is_sdhc):
+    """Delete an empty directory and free its cluster allocation.
+
+    Args:
+        dirname (str): Name of the directory to remove.
+        current_cluster (int): Cluster number of the parent directory.
+        data_start (int): First sector of the FAT32 data region.
+        spc (int): Number of sectors per cluster.
+        fat_start (int): First sector of the FAT table.
+        is_sdhc (bool): Whether the card uses block addressing.
+
+    Returns:
+        None: Status is reported through prints and on-disk updates.
+    """
+
     idx, entry, dir_data = find_file(dirname, current_cluster, data_start, spc, fat_start, is_sdhc)
 
     if not entry:
@@ -608,6 +847,20 @@ def delete_directory(dirname, current_cluster, data_start, spc, fat_start, is_sd
     print("Directory removed:", dirname)
 
 def delete_directory_recursive(cluster, data_start, spc, fat_start, is_sdhc):
+    """Recursively delete a directory tree rooted at the given cluster.
+
+    Args:
+        cluster (int): Cluster number of the directory to delete.
+        data_start (int): First sector of the FAT32 data region.
+        spc (int): Number of sectors per cluster.
+        fat_start (int): First sector of the FAT table.
+        is_sdhc (bool): Whether the card uses block addressing.
+
+    Returns:
+        None: Child entries are deleted, written back, and the directory's FAT
+        entry is cleared.
+    """
+
     print(f"\nEntering directory cluster: {cluster}")
 
     data = read_directory(cluster, data_start, spc, fat_start, is_sdhc)

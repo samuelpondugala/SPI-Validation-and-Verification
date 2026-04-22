@@ -5,7 +5,17 @@ import drivers
 
 @pytest.mark.parametrize("pattern_val", [0xAA, 0x55, 0xFF, 0x00])
 def test_raw_block_write_read(pattern_val):
-    """Writes pattern, catches bad file descriptor/setup errors."""
+    """Write and read back a uniform sector pattern for integrity validation.
+
+    Args:
+        pattern_val (int): Single byte value expanded into a 512-byte test
+            pattern.
+
+    Returns:
+        None: Builds `pattern` (list[int]), writes it to `test_sector` (int),
+        and checks that `read_data` (`list[int] | None`) is returned.
+    """
+
     try:
         # Hardcoding dummy values since we are bypassing the fixture
         is_sdhc = True

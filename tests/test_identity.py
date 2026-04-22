@@ -3,7 +3,13 @@ import drivers
 import logging
 
 def test_cmd0_idle_state():
-    """Testing actual hardware now!"""
+    """Open the SPI device and verify that `CMD0` reports SD idle state.
+
+    Returns:
+        None: Opens the bus, captures the `response` (int) from `drivers.send_cmd`,
+        asserts the expected idle value, and closes the device in `finally`.
+    """
+
     try:
         # 1. OPEN THE DOOR TO THE HARDWARE FIRST
         drivers.spi.open(0, 1) 
@@ -22,7 +28,13 @@ def test_cmd0_idle_state():
             pass
 
 def test_ocr_read():
-    """Validates OCR, catches bad file descriptor/setup errors."""
+    """Check that reading the OCR register yields an SDHC flag boolean.
+
+    Returns:
+        None: Stores `is_sdhc` (bool) from `drivers.read_ocr()` and asserts that
+        the hardware capability probe returns a boolean result.
+    """
+
     try:
         logging.info("Reading OCR Register...")
         is_sdhc = drivers.read_ocr()

@@ -20,18 +20,53 @@ spi.max_speed_hz = 20000000
 
 # ---------------- LOW LEVEL ----------------
 def cmd(c):
+    """Send a single command byte to the display controller.
+
+    Args:
+        c (int): Register or command byte written with the D/C pin low.
+
+    Returns:
+        None: Updates the GPIO control line and writes one byte over SPI.
+    """
+
     GPIO.output(DC, 0)
     spi.writebytes([c])
 
 def data16(d):
+    """Send one 16-bit data value to the display controller.
+
+    Args:
+        d (int): Unsigned 16-bit value split into high and low bytes.
+
+    Returns:
+        None: Updates the GPIO control line and writes two bytes over SPI.
+    """
+
     GPIO.output(DC, 1)
     spi.writebytes([d >> 8, d & 0xFF])
 
 def write_reg(reg, val):
+    """Write a 16-bit value into a display controller register.
+
+    Args:
+        reg (int): Register address or command byte.
+        val (int): 16-bit register payload written after the register select.
+
+    Returns:
+        None: Delegates to `cmd()` and `data16()` to transmit the register
+        update.
+    """
+
     cmd(reg)
     data16(val)
 
 def reset():
+    """Pulse the display reset pin to force the controller into a clean state.
+
+    Returns:
+        None: Drives the reset GPIO low then high with short timing delays.
+    """
+
     GPIO.output(RST, 0)
     time.sleep(0.1)
     GPIO.output(RST, 1)
@@ -39,6 +74,13 @@ def reset():
 
 # ---------------- INIT ----------------
 def init_display():
+    """Initialize the display controller registers for normal operation.
+
+    Returns:
+        None: Resets the panel and writes the register sequence required to
+        power up the display and enable drawing.
+    """
+
     reset()
 
     write_reg(0x01, 0x011C)
@@ -81,6 +123,18 @@ def init_display():
 
 # ---------------- WINDOW ----------------
 def set_window(x1, y1, x2, y2):
+    """Configure the rectangular drawing window used for subsequent pixel data.
+
+    Args:
+        x1 (int): Left column index of the drawing region.
+        y1 (int): Top row index of the drawing region.
+        x2 (int): Right column index of the drawing region.
+        y2 (int): Bottom row index of the drawing region.
+
+    Returns:
+        None: Programs the controller window registers and prepares RAM writes.
+    """
+
     write_reg(0x36, x2)
     write_reg(0x37, x1)
     write_reg(0x38, y2)
@@ -91,6 +145,16 @@ def set_window(x1, y1, x2, y2):
 
 # ---------------- FAST IMAGE DISPLAY ----------------
 def display_image_fast(image_path):
+    """Load an image, convert it to RGB565 bytes, and stream it to the display.
+
+    Args:
+        image_path (str): Path to the image file opened with Pillow.
+
+    Returns:
+        None: Resizes the image to `176x220`, converts each pixel to RGB565,
+        and writes the frame buffer to the display in SPI chunks.
+    """
+
     img = Image.open(image_path).convert("RGB")
     img = img.resize((176, 220))
 
@@ -116,6 +180,17 @@ def display_image_fast(image_path):
 
 # ---------------- VIDEO PLAYER ----------------
 def play_frames(folder=".", fps=10):
+    """Play sequential JPEG frames from a folder at a target frame rate.
+
+    Args:
+        folder (str): Directory containing files that match `frame_*.jpg`.
+        fps (int | float): Target playback rate used to compute frame delay.
+
+    Returns:
+        None: Streams each discovered frame to the display and sleeps as needed
+        to approximate the requested frame rate.
+    """
+
     frame_delay = 4.0 / fps
 
     frames = sorted(glob.glob(f"{folder}/frame_*.jpg"))

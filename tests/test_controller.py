@@ -5,7 +5,14 @@ import drivers
 import logging
 
 def test_wear_leveling_latency_spike():
-    """SCENARIO 4: Wear Leveling Latency"""
+    """Probe write-path latency using a fixed block pattern and sector number.
+
+    Returns:
+        None: Uses `start_sector` (int), `pattern` (list[int]), and
+        `is_sdhc` (bool) to trigger one representative block write and log any
+        hardware-access failures.
+    """
+
     try:
         logging.info("Blasting blocks to profile write latency...")
         is_sdhc = True
@@ -18,7 +25,14 @@ def test_wear_leveling_latency_spike():
         logging.error(f"Error occurred like this: {e}. Please check SPI bus initialization or file descriptors.")
 
 def test_raw_hazard_speed():
-    """SCENARIO 5: Read-After-Write Hazard"""
+    """Exercise an immediate read-after-write sequence on one test sector.
+
+    Returns:
+        None: Uses `test_sector` (int), `pattern` (list[int]), and
+        `is_sdhc` (bool) to perform a back-to-back write and read for hazard
+        detection.
+    """
+
     try:
         logging.info("Testing instant Read-After-Write hazard...")
         is_sdhc = True
@@ -31,7 +45,13 @@ def test_raw_hazard_speed():
         logging.error(f"Error occurred like this: {e}. Please check SPI bus initialization or file descriptors.")
 
 def test_hot_swap_identity_crisis():
-    """SCENARIO 6: Hot-Swap Detection"""
+    """Perform a simple write after re-reading card identity information.
+
+    Returns:
+        None: Uses `is_sdhc_A` (bool) from `drivers.read_ocr()` plus
+        `test_sector` (int) to model a hot-swap style identity check.
+    """
+
     try:
         logging.warning("!!! PHYSICAL TEST: HOT SWAP !!!")
         is_sdhc_A = drivers.read_ocr()

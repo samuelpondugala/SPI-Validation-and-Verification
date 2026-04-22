@@ -10,6 +10,13 @@ spi.max_speed_hz = 500000
 spi.mode = 0b00  # SPI Mode 0
 
 def loopback_test():
+    """Run an SPI loopback sanity check with several byte-pattern payloads.
+
+    Returns:
+        None: Sends each `list[int]` test pattern over SPI, compares the echoed
+        response to the transmitted bytes, and prints pass/fail status.
+    """
+
     print("Starting SPI Loopback Test...\n")
 
     test_data_list = [
