@@ -3,14 +3,7 @@ import logging
 import drivers
 
 def test_fat32_filesystem_churn():
-    """Create and rediscover a file to simulate light FAT32 churn.
-
-    Returns:
-        None: Uses `filename` (str), `content` (str), placeholder FAT geometry
-        values, and the resulting `entry` (`list[int] | None`) to confirm the
-        file can be created and found again.
-    """
-
+    """Catches bad file descriptor/setup errors."""
     try:
         filename = "STRESS.TXT"
         content = "V&V STRESS TEST PAYLOAD." * 5

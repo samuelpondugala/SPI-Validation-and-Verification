@@ -89,14 +89,7 @@ import drivers
 import logging
 
 def test_spi_mode_mismatch():
-    """Verify that an invalid SPI mode causes command timeout behavior.
-
-    Returns:
-        None: Temporarily changes `original_mode` (int), sends `CMD0`, and
-        checks that the resulting `response` (int) indicates the bus rejected
-        the mismatched mode.
-    """
-
+    """SCENARIO 2: CPOL/CPHA Mismatch"""
     try:
         logging.info("Testing SPI Mode 1 Rejection...")
         original_mode = drivers.spi.mode
@@ -110,14 +103,7 @@ def test_spi_mode_mismatch():
         logging.error(f"Error occurred like this: {e}. Please check SPI bus initialization or file descriptors.")
 
 def test_miso_disconnect_timeout():
-    """Simulate a disconnected MISO line by expecting a failed block read.
-
-    Returns:
-        None: Uses `test_sector` (int), `is_sdhc` (bool), and `data`
-        (`list[int] | None`) to confirm the read path returns `None` instead of
-        pretending the transfer succeeded.
-    """
-
+    """SCENARIO 3: MISO Dead Slave Simulation"""
     try:
         logging.warning("!!! PHYSICAL TEST: MISO TIMEOUT !!!")
         # Dummy values to bypass missing fixture
@@ -130,14 +116,7 @@ def test_miso_disconnect_timeout():
         logging.error(f"Error occurred like this: {e}. Please check SPI bus initialization or file descriptors.")
 
 def test_spi_cs_glitch_simulation():
-    """Inject a partial command frame and verify the next command can recover.
-
-    Returns:
-        None: Uses `glitch_packet` (list[int]) to corrupt one transaction, then
-        checks that the subsequent `response` (int) from `CMD0` matches idle
-        state recovery.
-    """
-
+    """SCENARIO 1: Transaction Interruption (CS Glitch)"""
     try:
         logging.info("Injecting simulated CS/Clock glitch (incomplete frame)...")
         glitch_packet = [0x40 | 17, 0x00, 0x00] 

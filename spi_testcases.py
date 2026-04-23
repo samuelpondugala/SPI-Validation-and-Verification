@@ -7,18 +7,6 @@ spi.max_speed_hz = 400000  # Start slow
 spi.mode = 0
 
 def send_cmd(cmd, arg, crc):
-    """Send a raw SD command over SPI and return the first card response byte.
-
-    Args:
-        cmd (int): SD command index without the SPI start-bit prefix.
-        arg (int): 32-bit argument bundled with the command.
-        crc (int): CRC byte transmitted as the sixth command byte.
-
-    Returns:
-        int: First non-`0xFF` response from the card, or `-1` if no response is
-        received within the polling window.
-    """
-
     packet = [
         cmd | 0x40,
         (arg >> 24) & 0xFF,
@@ -37,13 +25,6 @@ def send_cmd(cmd, arg, crc):
     return -1
 
 def init_sd():
-    """Perform a minimal SD card startup sequence for manual SPI testing.
-
-    Returns:
-        None: Sends the initial clock train plus `CMD0` and `CMD8`, then prints
-        their raw response values for inspection.
-    """
-
     print("Initializing SD Card...")
 
     # Send 80 clock cycles

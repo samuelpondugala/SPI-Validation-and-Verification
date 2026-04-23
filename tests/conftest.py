@@ -5,15 +5,11 @@ import drivers
 
 @pytest.fixture(scope="session", autouse=True)
 def sd_env():
-    """Set up a shared SD-card test environment for the full pytest session.
-
-    Yields:
-        dict[str, int | bool]: Environment values discovered during startup,
-        including `is_sdhc` (bool), `fat_start` (int), `data_start` (int),
-        `spc` (int), and `root_cluster` (int). An empty dict is yielded if
-        initialization fails so tests can degrade safely.
     """
-
+    Initializes SPI and SD Card globally.
+    autouse=True ensures the bus is opened before ANY test runs, 
+    even if a specific test doesn't explicitly request 'sd_env' in its arguments.
+    """
     logging.info("Initializing SPI & SD Card Interface...")
     
     # Default empty environment in case of hardware failure

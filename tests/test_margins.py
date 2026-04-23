@@ -5,14 +5,7 @@ import logging
 import drivers
 
 def test_spi_clock_margin():
-    """Run one block read at a higher SPI clock to probe timing margin.
-
-    Returns:
-        None: Sets `freq` (int), reads `test_sector` (int), and validates that
-        the returned `data` (`list[int] | None`) is present before restoring
-        the default SPI rate.
-    """
-
+    """Sweeps clock, catches bad file descriptor/setup errors."""
     try:
         is_sdhc = True
         test_sector = 36000

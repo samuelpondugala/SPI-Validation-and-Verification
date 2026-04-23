@@ -4,13 +4,7 @@ import logging
 import drivers
 
 def test_negative_invalid_command():
-    """Send an unsupported SD command and inspect the illegal-command bit.
-
-    Returns:
-        None: Captures `response` (int), derives `is_illegal_cmd` (bool), and
-        asserts that the card reports the command as invalid.
-    """
-
+    """Catches the specific OSError from the bad file descriptor log."""
     try:
         logging.info("Negative Test: Sending invalid CMD99...")
         response = drivers.send_cmd(99, 0, 0x00)
@@ -22,13 +16,7 @@ def test_negative_invalid_command():
         logging.warning(f"Setup error occurred: {e}. Please check environment.")
 
 def test_negative_out_of_bounds_read():
-    """Attempt an out-of-range block read and expect a failed result.
-
-    Returns:
-        None: Uses `out_of_bounds_sector` (int), `is_sdhc` (bool), and `data`
-        (`list[int] | None`) to confirm invalid addressing is handled safely.
-    """
-
+    """Catches bad file descriptor/setup errors."""
     try:
         is_sdhc = True
         out_of_bounds_sector = 0xFFFFFFFF 
@@ -41,14 +29,7 @@ def test_negative_out_of_bounds_read():
         logging.warning(f"Setup error occurred: {e}. Please check environment.")
 
 def test_negative_delete_ghost_file():
-    """Look up and delete a file name that should not exist in the directory.
-
-    Returns:
-        None: Uses `ghost_filename` (str), placeholder FAT geometry values, and
-        the resulting `entry` (`list[int] | None`) to validate missing-file
-        handling.
-    """
-
+    """Catches bad file descriptor/setup errors."""
     try:
         # Dummy values to bypass missing fixture
         ghost_filename = "GHOST.TXT"
