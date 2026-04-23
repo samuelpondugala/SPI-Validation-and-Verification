@@ -4,6 +4,7 @@ import sys
 import os
 import datetime
 import logging
+from importlib.util import find_spec
 
 if __name__ == "__main__":
     # Create logs directory if it doesn't exist
@@ -24,14 +25,24 @@ if __name__ == "__main__":
     )
 
     logging.info("🚀 Starting SPI Validation Framework...")
-    
+
     args = [
         "-v",
         "-s",
-        f"--html={report_file}",
-        "--self-contained-html",
         "tests/"
     ]
+
+    if find_spec("pytest_html") is not None:
+        args[2:2] = [
+            f"--html={report_file}",
+            "--self-contained-html",
+        ]
+        logging.info(f"HTML test report will be written to: {report_file}")
+    else:
+        logging.warning(
+            "pytest-html is not installed; running tests without an HTML report. "
+            "Install it with: pip install pytest-html"
+        )
     
     exit_code = pytest.main(args)
     logging.info(f"Test suite finished with exit code: {exit_code}")
